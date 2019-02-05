@@ -43,7 +43,7 @@ class Yametrics:
             response = requests.get(url=self.url, headers=self.headers, params=params)
             json = response.json()
             if response.status_code == 200:
-                pprint.pprint(json)
+                # pprint.pprint(json)
                 return json
             else:
                 pprint.pprint(json)

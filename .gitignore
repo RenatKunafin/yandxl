@@ -118,3 +118,5 @@ dmypy.json
 notes.txt
 .idea/
 .vscode/
+stub/
+*.xlsx
