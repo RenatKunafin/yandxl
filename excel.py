@@ -2,26 +2,14 @@ from openpyxl import Workbook
 from openpyxl import load_workbook
 from datetime import datetime
 from datetime import timedelta
-import os
 
 
 class Excel:
-    def __init__(self, data):
+    def __init__(self, cfg, data):
         self.data = data
         self.query = data['query']
-        self.name = os.environ.get('WB_NAME')
-        # TODO вынести в .envrc
-        self.titles = [
-            'Дата',
-            'Визиты',
-            'Пользователи',
-            'Сумма параметров визитов',
-            'Количество параметров визитов',
-            'Среднее параметров визитов',
-            'Отказы',
-            'Глубина просмотра',
-            'Время на сайте'
-        ]
+        self.name = cfg.get('excel', 'WB_NAME')
+        self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
 
     @staticmethod
     def create_ws_name(dimensions):

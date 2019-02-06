@@ -120,3 +120,4 @@ notes.txt
 .vscode/
 stub/
 *.xlsx
+*.ini
