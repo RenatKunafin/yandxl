@@ -7,7 +7,6 @@ from email.utils import COMMASPACE, formatdate
 
 
 def send_mail(send_from, send_to, subject, text, password, files=None):
-
     msg = MIMEMultipart()
     msg['From'] = send_from
     msg['To'] = COMMASPACE.join(send_to)
@@ -26,7 +25,7 @@ def send_mail(send_from, send_to, subject, text, password, files=None):
         msg.attach(part)
 
     smtp = smtplib.SMTP_SSL('smtp.yandex.com', 465)
-    smtp.set_debuglevel(1)
+    # smtp.set_debuglevel(1)
     smtp.ehlo()
     smtp.login(send_from, password)
     smtp.sendmail(send_from, send_to, msg.as_string())

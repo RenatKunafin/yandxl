@@ -9,6 +9,8 @@ class Excel:
         self.data = data
         self.query = data['query']
         self.name = cfg.get('excel', 'WB_NAME')
+        self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
+        self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
 
     @staticmethod
@@ -43,17 +45,32 @@ class Excel:
 
     def init_wb(self):
         wb = Workbook()
+        ws_dashboard = wb.active
+        ws_dashboard.title = self.dashboard_ws_name
+        ws_dashboard.append(self.titles_dashboard)
         date = self.get_row_date()
         for d in self.data['data']:
-            ws = wb.create_sheet(Excel.create_ws_name(d['dimensions']))
+            ws_name = self.create_ws_name(d['dimensions'])
+            ws = wb.create_sheet(ws_name)
             ws.append(self.titles)
             self.fill_row(ws, d, date)
+            ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
         wb.save(self.name)
 
     def write_to_wb(self):
+        # Проверить есть ли такой воркшит
+        # Если его нет, то создать и добавить в него строку с данными
+        # затем завести для него строку на титульном воркшите
+        # Если он есть, то добавить в него данные
         wb = load_workbook(self.name)
+        ws_dashboard = wb[self.dashboard_ws_name]
         date = self.get_row_date()
         for d in self.data['data']:
-            ws = wb[self.create_ws_name(d['dimensions'])]
+            ws_name = self.create_ws_name(d['dimensions'])
+            ws = wb[ws_name]
+            if ws is None:
+                ws = wb.create_sheet(ws_name)
+                ws.append(self.titles)
+                ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
             self.fill_row(ws, d, date)
         wb.save(self.name)
