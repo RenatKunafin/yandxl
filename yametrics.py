@@ -12,6 +12,7 @@ class Yametrics:
         self.token = cfg.get('yam', 'YANDEX_TOKEN')
         self.headers = {'Authorization': 'OAuth  ' + self.token}
         self.counter_id = cfg.get('yam', 'COUNTER')
+        self.period = cfg.get('yam', 'PERIOD')
 
         self.dimensions = cfg.get('yam', 'dimensions').split(',')
         self.metrics = cfg.get('yam', 'metrics').split(',')
@@ -21,7 +22,8 @@ class Yametrics:
             "direct_client_logins": self.cfg.get('yam', 'LOGIN'),
             "ids": self.counter_id,
             "dimensions": self.dimensions,
-            "metrics": self.metrics
+            "metrics": self.metrics,
+            "date1": self.period
         }
         try:
             response = requests.get(url=self.url, headers=self.headers, params=params)

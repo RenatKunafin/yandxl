@@ -1,7 +1,6 @@
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from datetime import datetime
-from datetime import timedelta
 
 
 class Excel:
@@ -30,10 +29,12 @@ class Excel:
 
     def get_row_date(self):
         date = ''
-        if self.query['date1'] is 'today':
+        print('REQUESTED DATES', self.query['date1'], self.query['date2'])
+        date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d')
+        date2 = datetime.strptime(self.query['date2'], '%Y-%m-%d')
+        delta = date2 - date1
+        if delta.days <= 1:
             date = datetime.now().strftime("%Y-%m-%d")
-        elif self.query['date1'] is 'yesterday':
-            date = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
         else:
             try:
                 date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d').strftime("%Y-%m-%d")
@@ -58,19 +59,22 @@ class Excel:
         wb.save(self.name)
 
     def write_to_wb(self):
-        # Проверить есть ли такой воркшит
+        # Подгрузить файл, если его нет, то создать
+        # Проверить есть ли воркшит с историческими данными для данной метрики
         # Если его нет, то создать и добавить в него строку с данными
-        # затем завести для него строку на титульном воркшите
-        # Если он есть, то добавить в него данные
+        # Затем завести для него строку на титульном воркшите
         wb = load_workbook(self.name)
-        ws_dashboard = wb[self.dashboard_ws_name]
-        date = self.get_row_date()
-        for d in self.data['data']:
-            ws_name = self.create_ws_name(d['dimensions'])
-            ws = wb[ws_name]
-            if ws is None:
-                ws = wb.create_sheet(ws_name)
-                ws.append(self.titles)
-                ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
-            self.fill_row(ws, d, date)
-        wb.save(self.name)
+        if wb is None:
+            self.init_wb()
+        else:
+            ws_dashboard = wb[self.dashboard_ws_name]
+            date = self.get_row_date()
+            for d in self.data['data']:
+                ws_name = self.create_ws_name(d['dimensions'])
+                ws = wb[ws_name]
+                if ws is None:
+                    ws = wb.create_sheet(ws_name)
+                    ws.append(self.titles)
+                    ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
+                self.fill_row(ws, d, date)
+            wb.save(self.name)
