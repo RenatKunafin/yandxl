@@ -14,12 +14,11 @@ class Yametrics:
         self.counter_id = cfg.get('yam', 'COUNTER')
         self.period = cfg.get('yam', 'PERIOD')
 
-        self.dimensions = cfg.get('yam', 'dimensions').split(',')
-        self.metrics = cfg.get('yam', 'metrics').split(',')
+        self.dimensions = cfg.get('yam', 'DIMENSIONS').split(',')
+        self.metrics = cfg.get('yam', 'METRICS').split(',')
 
     def request_metrics(self):
         params = {
-            "direct_client_logins": self.cfg.get('yam', 'LOGIN'),
             "ids": self.counter_id,
             "dimensions": self.dimensions,
             "metrics": self.metrics,
