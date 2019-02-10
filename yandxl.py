@@ -1,6 +1,8 @@
+import os
+import getopt
+import sys
 from yametrics import Yametrics
 from excel import Excel
-import os, sys, getopt
 from configparser import ConfigParser
 from sendmail import send_mail
 
