@@ -34,7 +34,7 @@ class Excel:
         date2 = datetime.strptime(self.query['date2'], '%Y-%m-%d')
         delta = date2 - date1
         if delta.days <= 1:
-            date = datetime.now().strftime("%Y-%m-%d")
+            date = self.query['date1']
         else:
             try:
                 date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d').strftime("%Y-%m-%d")
@@ -71,8 +71,9 @@ class Excel:
             date = self.get_row_date()
             for d in self.data['data']:
                 ws_name = self.create_ws_name(d['dimensions'])
-                ws = wb[ws_name]
-                if ws is None:
+                try:
+                    ws = wb[ws_name]
+                except KeyError:
                     ws = wb.create_sheet(ws_name)
                     ws.append(self.titles)
                     ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
