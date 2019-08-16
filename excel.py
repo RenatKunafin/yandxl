@@ -8,6 +8,7 @@ class Excel:
         self.data = data
         self.query = data['query']
         self.name = cfg.get('excel', 'WB_NAME')
+        self.existing_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
@@ -63,7 +64,7 @@ class Excel:
         # Проверить есть ли воркшит с историческими данными для данной метрики
         # Если его нет, то создать и добавить в него строку с данными
         # Затем завести для него строку на титульном воркшите
-        wb = load_workbook(self.name)
+        wb = load_workbook(self.existing_wb)
         if wb is None:
             self.init_wb()
         else:
