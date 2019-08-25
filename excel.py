@@ -64,10 +64,8 @@ class Excel:
         # Проверить есть ли воркшит с историческими данными для данной метрики
         # Если его нет, то создать и добавить в него строку с данными
         # Затем завести для него строку на титульном воркшите
-        wb = load_workbook(self.existing_wb)
-        if wb is None:
-            self.init_wb()
-        else:
+        try:
+            wb = load_workbook(self.existing_wb)
             ws_dashboard = wb[self.dashboard_ws_name]
             date = self.get_row_date()
             for d in self.data['data']:
@@ -80,3 +78,5 @@ class Excel:
                     ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
                 self.fill_row(ws, d, date)
             wb.save(self.name)
+        except FileNotFoundError:
+            self.init_wb()
