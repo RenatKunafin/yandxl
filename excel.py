@@ -57,7 +57,7 @@ class Excel:
             ws.append(self.titles)
             self.fill_row(ws, d, date)
             ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
-        wb.save(self.name)
+        wb.save(self.existing_wb)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
