@@ -7,8 +7,7 @@ class Excel:
     def __init__(self, cfg, data):
         self.data = data
         self.query = data['query']
-        self.name = cfg.get('excel', 'WB_NAME')
-        self.existing_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
+        self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
@@ -57,7 +56,7 @@ class Excel:
             ws.append(self.titles)
             self.fill_row(ws, d, date)
             ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
-        wb.save(self.existing_wb)
+        wb.save(self.path_to_wb)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
@@ -65,7 +64,7 @@ class Excel:
         # Если его нет, то создать и добавить в него строку с данными
         # Затем завести для него строку на титульном воркшите
         try:
-            wb = load_workbook(self.existing_wb)
+            wb = load_workbook(self.path_to_wb)
             ws_dashboard = wb[self.dashboard_ws_name]
             date = self.get_row_date()
             for d in self.data['data']:
@@ -77,6 +76,6 @@ class Excel:
                     ws.append(self.titles)
                     ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
                 self.fill_row(ws, d, date)
-            wb.save(self.name)
+            wb.save(self.path_to_wb)
         except FileNotFoundError:
             self.init_wb()
