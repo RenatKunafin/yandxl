@@ -122,3 +122,4 @@ stub/
 *.xlsx
 *.ini
 *.sh
+.DS_Store

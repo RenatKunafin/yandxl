@@ -9,7 +9,7 @@ from sendmail import send_mail
 
 def send(cfg):
     from_address = cfg.get('smtp', 'FROM')
-    to_address = cfg.get('smtp', 'TO').split(',')
+    to_address = cfg.get('smtp', 'TO')
     subject = cfg.get('smtp', 'SUBJECT')
     text = cfg.get('smtp', 'TEXT')
     file = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')

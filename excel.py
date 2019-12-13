@@ -1,6 +1,7 @@
 from openpyxl import Workbook
 from openpyxl import load_workbook
 from datetime import datetime
+from hashlib import md5
 
 
 class Excel:
@@ -11,14 +12,7 @@ class Excel:
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
-
-    @staticmethod
-    def create_ws_name(dimensions):
-        name = ''
-        for i, d in enumerate(dimensions):
-            if i > 2 and d['name'] is not None:
-                name = name + d['name'] + '.'
-        return name[:-1]
+        self.max_ws_name_length = int(cfg.get('excel', 'MAX_WS_NAME_LENGTH'))
 
     @staticmethod
     def fill_row(ws, data, date):
@@ -26,6 +20,17 @@ class Excel:
         values.append(date)
         values.extend(data['metrics'])
         ws.append(values)
+
+    def create_ws_name(self, dimensions):
+        name = ''
+        for i, d in enumerate(dimensions):
+            if i >= 2 and d['name'] is not None and d['name'] is not 'null':
+                name = name + d['name'] + '.'
+        a = {
+            'full': name[:-1],
+            'short': str(md5(name[:-1].encode('UTF-8')).hexdigest()[:-1])
+        }
+        return a
 
     def get_row_date(self):
         date = ''
@@ -52,11 +57,15 @@ class Excel:
         date = self.get_row_date()
         for d in self.data['data']:
             ws_name = self.create_ws_name(d['dimensions'])
-            ws = wb.create_sheet(ws_name)
+            ws = wb.create_sheet(ws_name['short'])
             ws.append(self.titles)
             self.fill_row(ws, d, date)
-            ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
-        wb.save(self.path_to_wb)
+            ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
+            ws['A1'].style = "Hyperlink"
+            ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
+
+        self.update_dashboard(wb)
+        # wb.save(self.path_to_wb)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
@@ -70,12 +79,37 @@ class Excel:
             for d in self.data['data']:
                 ws_name = self.create_ws_name(d['dimensions'])
                 try:
-                    ws = wb[ws_name]
+                    ws = wb[ws_name['short']]
                 except KeyError:
-                    ws = wb.create_sheet(ws_name)
+                    ws = wb.create_sheet(ws_name['short'])
                     ws.append(self.titles)
-                    ws_dashboard.append([ws_name, d['metrics'][0], d['metrics'][1]])
+                    ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
+                    ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
+                    ws['A1'].style = "Hyperlink"
                 self.fill_row(ws, d, date)
-            wb.save(self.path_to_wb)
+                wb.save(self.path_to_wb)
+            self.update_dashboard(wb)
         except FileNotFoundError:
             self.init_wb()
+
+    def get_last_row(self, ws):
+        last = len(ws['A'])
+        return [ws.cell(last, 2).value, ws.cell(last, 3).value]
+    
+    def update_dashboard(self, wb):
+        ws = wb[self.dashboard_ws_name]
+        for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
+            for cell in row:
+                if cell.row == 1:
+                    continue
+                elif cell.column == 1:
+                    link = str(md5(cell.value.encode('UTF-8')).hexdigest()[:-1])
+                    cell.hyperlink = f'#{link}!A1'
+                    cell.style = "Hyperlink"
+                elif cell.column == 2:
+                    val = self.get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
+                    cell.value = val[0]
+                elif cell.column == 3:
+                    val = self.get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
+                    cell.value = val[1]
+        wb.save(self.path_to_wb)
