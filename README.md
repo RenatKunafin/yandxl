@@ -51,7 +51,7 @@ WB_NAME - Название файла отчета, например Brokerage_y
 
 MAX_WS_NAME_LENGTH - максимальная длинна названия воркшита
 
-TITLES_FILL_COLOR = 808080 - цвет заголовков таблиц
+TITLES_FILL_COLOR - 808080 - цвет заголовков таблиц
 
 [smtp]
 
@@ -67,9 +67,9 @@ SUBJECT - тема письма
 
 TEXT - текст письма
 
-PATH = относительный путь до файла отчета (./)
+PATH - относительный путь до файла отчета (./)
 
-PASS = пароль от почты для приложения. [Описание](https://yandex.ru/support/passport/authorization/app-passwords.html).
+PASS - пароль от почты для приложения. [Описание](https://yandex.ru/support/passport/authorization/app-passwords.html).
 
 # Пример ini-файла
 ```ini
