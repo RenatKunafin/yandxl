@@ -12,7 +12,8 @@ class Yametrics:
         self.token = cfg.get('yam', 'YANDEX_TOKEN')
         self.headers = {'Authorization': 'OAuth  ' + self.token}
         self.counter_id = cfg.get('yam', 'COUNTER')
-        self.period = cfg.get('yam', 'PERIOD')
+        self.date1 = cfg.get('yam', 'DATE1')
+        self.date2 = cfg.get('yam', 'DATE2')
         self.filters = cfg.get('yam', 'FILTERS')
 
         self.dimensions = cfg.get('yam', 'DIMENSIONS').split(',')
@@ -23,7 +24,8 @@ class Yametrics:
             "ids": self.counter_id,
             "dimensions": self.dimensions,
             "metrics": self.metrics,
-            "date1": self.period,
+            "date1": self.date1,
+            "date2": self.date2,
             "filters": self.filters
         }
         try:

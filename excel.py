@@ -1,5 +1,6 @@
-from openpyxl import Workbook
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
+from openpyxl.cell import Cell
+from openpyxl.styles import Font, Fill, PatternFill
 from datetime import datetime
 from hashlib import md5
 
@@ -13,6 +14,7 @@ class Excel:
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
         self.max_ws_name_length = int(cfg.get('excel', 'MAX_WS_NAME_LENGTH'))
+        self.titles_color = int(cfg.get('excel', 'TITLES_FILL_COLOR'))
 
     @staticmethod
     def fill_row(ws, data, date):
@@ -58,14 +60,19 @@ class Excel:
         for d in self.data['data']:
             ws_name = self.create_ws_name(d['dimensions'])
             ws = wb.create_sheet(ws_name['short'])
-            ws.append(self.titles)
-            self.fill_row(ws, d, date)
+            ws['A1'].value = 'Дашборд'
+            ws['A1'].font = Font(size=14)
             ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
             ws['A1'].style = "Hyperlink"
+            ws['B1'].value = ws_name['full']
+            ws['B1'].font = Font(bold=True, size=14)
+            ws.freeze_panes = ws['A3']
+            for idx, title in enumerate(self.titles, start=1):
+                c = ws.cell(column=idx, row=2, value=title)
+                c.fill = PatternFill("solid", fgColor=str(self.titles_color))
+            self.fill_row(ws, d, date)
             ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-
         self.update_dashboard(wb)
-        # wb.save(self.path_to_wb)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
@@ -87,7 +94,6 @@ class Excel:
                     ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
                     ws['A1'].style = "Hyperlink"
                 self.fill_row(ws, d, date)
-                wb.save(self.path_to_wb)
             self.update_dashboard(wb)
         except FileNotFoundError:
             self.init_wb()
@@ -113,3 +119,4 @@ class Excel:
                     val = self.get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
         wb.save(self.path_to_wb)
+        print('excel ready')
