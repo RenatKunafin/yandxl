@@ -17,13 +17,13 @@ class Excel:
         self.titles_color = int(cfg.get('excel', 'TITLES_FILL_COLOR'))
 
     @staticmethod
-    def fill_row(ws, data, date):
+    def _fill_row(ws, data, date):
         values = list()
         values.append(date)
         values.extend(data['metrics'])
         ws.append(values)
 
-    def create_ws_name(self, dimensions):
+    def _create_ws_name(self, dimensions):
         name = ''
         for i, d in enumerate(dimensions):
             if i >= 2 and d['name'] is not None and d['name'] is not 'null':
@@ -34,7 +34,7 @@ class Excel:
         }
         return a
 
-    def get_row_date(self):
+    def _get_row_date(self):
         date = ''
         print('REQUESTED DATES', self.query['date1'], self.query['date2'])
         date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d')
@@ -50,29 +50,32 @@ class Excel:
             except ValueError as e:
                 print(e)
         return str(date)
+    
+    def _create_ws_header(self, ws, ws_name):
+        ws['A1'].value = 'Дашборд'
+        ws['A1'].font = Font(size=14)
+        ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
+        ws['A1'].style = "Hyperlink"
+        ws['B1'].value = ws_name['full']
+        ws['B1'].font = Font(bold=True, size=14)
+        ws.freeze_panes = ws['A3']
+        for idx, title in enumerate(self.titles, start=1):
+            c = ws.cell(column=idx, row=2, value=title)
+            c.fill = PatternFill("solid", fgColor=str(self.titles_color))
 
     def init_wb(self):
         wb = Workbook()
         ws_dashboard = wb.active
         ws_dashboard.title = self.dashboard_ws_name
         ws_dashboard.append(self.titles_dashboard)
-        date = self.get_row_date()
+        date = self._get_row_date()
         for d in self.data['data']:
-            ws_name = self.create_ws_name(d['dimensions'])
+            ws_name = self._create_ws_name(d['dimensions'])
             ws = wb.create_sheet(ws_name['short'])
-            ws['A1'].value = 'Дашборд'
-            ws['A1'].font = Font(size=14)
-            ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
-            ws['A1'].style = "Hyperlink"
-            ws['B1'].value = ws_name['full']
-            ws['B1'].font = Font(bold=True, size=14)
-            ws.freeze_panes = ws['A3']
-            for idx, title in enumerate(self.titles, start=1):
-                c = ws.cell(column=idx, row=2, value=title)
-                c.fill = PatternFill("solid", fgColor=str(self.titles_color))
-            self.fill_row(ws, d, date)
+            self._create_ws_header(ws, ws_name)
+            self._fill_row(ws, d, date)
             ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-        self.update_dashboard(wb)
+        self._update_dashboard(wb)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
@@ -82,27 +85,25 @@ class Excel:
         try:
             wb = load_workbook(self.path_to_wb)
             ws_dashboard = wb[self.dashboard_ws_name]
-            date = self.get_row_date()
+            date = self._get_row_date()
             for d in self.data['data']:
-                ws_name = self.create_ws_name(d['dimensions'])
+                ws_name = self._create_ws_name(d['dimensions'])
                 try:
                     ws = wb[ws_name['short']]
                 except KeyError:
                     ws = wb.create_sheet(ws_name['short'])
-                    ws.append(self.titles)
+                    self._create_ws_header(ws, ws_name)
                     ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-                    ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
-                    ws['A1'].style = "Hyperlink"
-                self.fill_row(ws, d, date)
-            self.update_dashboard(wb)
+                self._fill_row(ws, d, date)
+            self._update_dashboard(wb)
         except FileNotFoundError:
             self.init_wb()
 
-    def get_last_row(self, ws):
+    def _get_last_row(self, ws):
         last = len(ws['A'])
         return [ws.cell(last, 2).value, ws.cell(last, 3).value]
     
-    def update_dashboard(self, wb):
+    def _update_dashboard(self, wb):
         ws = wb[self.dashboard_ws_name]
         for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
             for cell in row:
@@ -113,10 +114,10 @@ class Excel:
                     cell.hyperlink = f'#{link}!A1'
                     cell.style = "Hyperlink"
                 elif cell.column == 2:
-                    val = self.get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
+                    val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[0]
                 elif cell.column == 3:
-                    val = self.get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
+                    val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
         wb.save(self.path_to_wb)
         print('excel ready')
