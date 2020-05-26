@@ -56,7 +56,7 @@ def main(argv):
             sys.exit()
         elif opt in ('-a', '--add'):
             excel.write_to_wb()
-            send(cfg)
+            # send(cfg)
             sys.exit()
         else:
             print('yandxl.py -i <init> -a <add>')

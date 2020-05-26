@@ -15,6 +15,8 @@ class Excel:
         self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
         self.max_ws_name_length = int(cfg.get('excel', 'MAX_WS_NAME_LENGTH'))
         self.titles_color = int(cfg.get('excel', 'TITLES_FILL_COLOR'))
+        self.odbo_funnel_sheet_name = cfg.get('excel', 'ODBO_FUNNEL_SHEET_NAME')
+        self.odbo_funnel_elements = cfg.get('excel', 'ODBO_FUNNEL_ELEMENTS').split(',')
 
     @staticmethod
     def _fill_row(ws, data, date):
@@ -113,6 +115,8 @@ class Excel:
                     link = str(md5(cell.value.encode('UTF-8')).hexdigest()[:-1])
                     cell.hyperlink = f'#{link}!A1'
                     cell.style = "Hyperlink"
+                    if cell.value in self.odbo_funnel_elements:
+                        self._update_funnel_odbo(wb, cell.value, cell.offset(row=0, column=+1).value)
                 elif cell.column == 2:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[0]
@@ -121,3 +125,12 @@ class Excel:
                     cell.value = val[1]
         wb.save(self.path_to_wb)
         print('excel ready')
+
+    def _update_funnel_odbo(self, wb, name, value):
+        ws = wb[self.odbo_funnel_sheet_name]
+        for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
+            for cell in row:
+                if cell.value != name:
+                    continue
+                else:
+                    cell.offset(row=0, column=+2).value = value
