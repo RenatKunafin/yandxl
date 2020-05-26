@@ -28,5 +28,5 @@ def send_mail(send_from, send_to, subject, text, password, files=None):
     # smtp.set_debuglevel(1)
     smtp.ehlo()
     smtp.login(send_from, password)
-    smtp.sendmail(send_from, send_to, msg.as_string())
+    smtp.sendmail(send_from, send_to.split(', '), msg.as_string())
     smtp.close()
