@@ -115,11 +115,11 @@ class Excel:
                     link = str(md5(cell.value.encode('UTF-8')).hexdigest()[:-1])
                     cell.hyperlink = f'#{link}!A1'
                     cell.style = "Hyperlink"
-                    if cell.value in self.odbo_funnel_elements:
-                        self._update_funnel_odbo(wb, cell.value, cell.offset(row=0, column=+1).value)
                 elif cell.column == 2:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[0]
+                    if cell.offset(row=0, column=-1).value in self.odbo_funnel_elements:
+                        self._update_funnel_odbo(wb, cell.offset(row=0, column=-1).value, val[0])
                 elif cell.column == 3:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
