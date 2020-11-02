@@ -107,6 +107,7 @@ class Excel:
     
     def _update_dashboard(self, wb):
         ws = wb[self.dashboard_ws_name]
+        self._reset_funnel_odbo(wb)
         for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
             for cell in row:
                 if cell.row == 1:
@@ -120,12 +121,19 @@ class Excel:
                     cell.value = val[0]
                     if cell.offset(row=0, column=-1).value in self.odbo_funnel_elements:
                         self._update_funnel_odbo(wb, cell.offset(row=0, column=-1).value, val[0])
-                elif cell.column == 3:
+                elif cell.column == 3: 
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
         wb.save(self.path_to_wb)
         print('excel ready')
 
+    def _reset_funnel_odbo(self, wb):
+        ws = wb[self.odbo_funnel_sheet_name]
+        for row in ws.iter_rows(min_row=ws.min_row+1, max_row=ws.max_row, min_col=3, max_col=3):
+            for cell in row:
+                print('!>', cell.value)
+                cell.value = 0
+    
     def _update_funnel_odbo(self, wb, name, value):
         ws = wb[self.odbo_funnel_sheet_name]
         for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
@@ -133,4 +141,5 @@ class Excel:
                 if cell.value != name:
                     continue
                 else:
+                    print('!>>', cell.value, cell.offset(row=0, column=+2).value, value)
                     cell.offset(row=0, column=+2).value = value
