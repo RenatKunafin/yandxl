@@ -1,6 +1,7 @@
 import requests
 import pprint
 import logging
+import json
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -15,6 +16,7 @@ class Yametrics:
         self.date1 = cfg.get('yam', 'DATE1')
         self.date2 = cfg.get('yam', 'DATE2')
         self.filters = cfg.get('yam', 'FILTERS')
+        self.accuracy = cfg.get('yam', 'ACCURACY')
 
         self.dimensions = cfg.get('yam', 'DIMENSIONS').split(',')
         self.metrics = cfg.get('yam', 'METRICS').split(',')
@@ -22,18 +24,23 @@ class Yametrics:
     def request_metrics(self):
         params = {
             "ids": self.counter_id,
+            "accuracy": self.accuracy,
             "dimensions": self.dimensions,
             "metrics": self.metrics,
             "date1": self.date1,
             "date2": self.date2,
-            "filters": self.filters
+            "filters": self.filters,
+            "limit": 100000
         }
         try:
             response = requests.get(url=self.url, headers=self.headers, params=params)
-            json = response.json()
+            jsonResp = response.json()
+            f = open("response.json", "w")
+            json.dump(jsonResp, f)
+            f.close()
             if response.status_code == 200:
-                return json
+                return jsonResp
             else:
-                pprint.pprint(json)
+                pprint.pprint(jsonResp)
         except Exception as e:
             print(e)

@@ -100,6 +100,7 @@ class Excel:
                 except KeyError:
                     ws = wb.create_sheet(ws_name['short'])
                     self._create_ws_header(ws, ws_name)
+                    # print('Добавил', ws_name['full'])
                     ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
                 self._fill_row(ws, d, date)
             self._update_dashboard(wb)
@@ -145,6 +146,8 @@ class Excel:
                         cell.fill = PatternFill("solid", fgColor=str('ff0000'))
                     elif cell.value < three_months_ago:
                         cell.fill = PatternFill("solid", fgColor=str('ff8400'))
+                    else:
+                        cell.fill = PatternFill(fill_type=None, start_color='FFFFFFFF', end_color='FF000000')
         wb.save(self.path_to_wb)
         print('excel ready')
 
@@ -167,8 +170,8 @@ class Excel:
                 if cell.value != name:
                     continue
                 elif datetime.strptime(date, '%Y-%m-%d') < date2.replace(hour=0, minute=0, second=0, microsecond=0):
-                    print('!>>', cell.value, cell.offset(row=0, column=+2).value, value, date, date2)
+                    # print('Занулил', cell.value, cell.offset(row=0, column=+2).value, value, date, date2)
                     cell.offset(row=0, column=+2).value = 0
                 else:
-                    print('!>>>', cell.value, cell.offset(row=0, column=+2).value, value, date)
+                    # print('Обновил', cell.value, cell.offset(row=0, column=+2).value, value, date)
                     cell.offset(row=0, column=+2).value = value
