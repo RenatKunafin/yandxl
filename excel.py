@@ -127,12 +127,13 @@ class Excel:
                 elif cell.column == 2:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[0]
-                    if cell.offset(row=0, column=-1).value in self.odbo_funnel_elements:
-                        self._update_funnels(wb, cell.offset(row=0, column=-1).value, val[0], val[2], self.odbo_funnel_sheet_name)
+                    name = cell.offset(row=0, column=-1).value
+                    if name.startswith('Открытие брокерского счета'):
+                        self._update_funnels(wb, name, val[0], val[2], self.odbo_funnel_sheet_name)
                     if cell.offset(row=0, column=-1).value in self.contract_funnel_elements:
-                        self._update_funnels(wb, cell.offset(row=0, column=-1).value, val[0], val[2], self.contract_funnel_sheet_name)
+                        self._update_funnels(wb, name, val[0], val[2], self.contract_funnel_sheet_name)
                     if cell.offset(row=0, column=-1).value in self.graph_funnel_elements:
-                        self._update_funnels(wb, cell.offset(row=0, column=-1).value, val[0], val[2], self.graph_funnel_sheet_name)
+                        self._update_funnels(wb, name, val[0], val[2], self.graph_funnel_sheet_name)
                 elif cell.column == 3: 
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
@@ -165,13 +166,18 @@ class Excel:
     def _update_funnels(self, wb, name, value, date, sheetname):
         ws = wb[sheetname]
         date2 = datetime.now() - timedelta(days=1)
+        # print('!>', ws.title, ws.max_row)
         for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
             for cell in row:
+                # if sheetname == self.odbo_funnel_sheet_name:
+                #     f = open("log.txt", "a")
+                #     f.write('!>>' + ',' + str(name) + ',' + str(cell.value) + '\n')
+                #     f.close()
                 if cell.value != name:
                     continue
                 elif datetime.strptime(date, '%Y-%m-%d') < date2.replace(hour=0, minute=0, second=0, microsecond=0):
                     # print('Занулил', cell.value, cell.offset(row=0, column=+2).value, value, date, date2)
-                    cell.offset(row=0, column=+2).value = 0
+                    cell.offset(row=0, column=+1).value = 0
                 else:
                     # print('Обновил', cell.value, cell.offset(row=0, column=+2).value, value, date)
-                    cell.offset(row=0, column=+2).value = value
+                    cell.offset(row=0, column=+1).value = value
