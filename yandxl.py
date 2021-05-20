@@ -1,8 +1,10 @@
 import os
 import getopt
 import sys
+import json
 from yametrics import Yametrics
-from excel import Excel
+# from excel import Excel
+from excel2 import Excel2
 from configparser import ConfigParser
 from sendmail import send_mail
 
@@ -46,18 +48,18 @@ def main(argv):
 
     ym = Yametrics(cfg)
     data = ym.request_metrics()
-    excel = Excel(cfg, data)
+    excel = Excel2(cfg, data)
 
     for opt, arg in opts:
 
         if opt in ('-i', '--init'):
             excel.init_wb()
-            send(cfg)
+            # send(cfg)
             sys.exit()
-        elif opt in ('-a', '--add'):
-            excel.write_to_wb()
-            send(cfg)
-            sys.exit()
+        # elif opt in ('-a', '--add'):
+        #     excel.write_to_wb()
+        #     # send(cfg)
+        #     sys.exit()
         else:
             print('yandxl.py -i <init> -a <add>')
             exit()

@@ -19,7 +19,7 @@ class Yametrics:
         self.accuracy = cfg.get('yam', 'ACCURACY')
 
         self.dimensions = cfg.get('yam', 'DIMENSIONS').split(',')
-        self.metrics = cfg.get('yam', 'METRICS').split(',')
+        self.metrics = cfg.get('yam', 'METRICS2').split(',')
 
     def request_metrics(self):
         params = {

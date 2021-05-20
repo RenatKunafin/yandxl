@@ -30,7 +30,7 @@ class Excel:
         values.extend(data['metrics'])
         ws.append(values)
 
-    def _create_ws_name(self, dimensions):
+    def _create_ws_name1(self, dimensions):
         name = ''
         for i, d in enumerate(dimensions):
             if i >= 2 and d['name'] is not None and d['name'] != 'null':
@@ -39,6 +39,28 @@ class Excel:
             'full': name[:-1],
             'short': str(md5(name[:-1].encode('UTF-8')).hexdigest()[:-1])
         }
+        return a
+
+    def _create_ws_name(self, dimensions):
+        name = ''
+        # print('DDD', dimensions)
+        for i, d in enumerate(dimensions):
+            if d['name'] is not None and d['name'] != 'null':
+                if i == 0 and d['name'] != 'SBOL_WEB':
+                    uko = d['name']
+                    # print('UKO', uko)
+                    name = name + f'[{uko}]'
+                elif i == 1 and dimensions[0]['name'] != 'SBOL_WEB':
+                    app = d['name']
+                    # print('APP', app, dimensions[i-1]['name'])
+                    name = name + f'[{app}]'
+                elif i >= 2:
+                    name = name + d['name'] + '.'
+        a = {
+            'full': name[:-1],
+            'short': str(md5(name[:-1].encode('UTF-8')).hexdigest()[:-1])
+        }
+        print('NAME', a)
         return a
 
     def _get_row_date(self):
@@ -82,7 +104,7 @@ class Excel:
             self._create_ws_header(ws, ws_name)
             self._fill_row(ws, d, date)
             ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-        self._update_dashboard(wb)
+        self._update_dashboard(wb, True)
 
     def write_to_wb(self):
         # Подгрузить файл, если его нет, то создать
@@ -103,7 +125,10 @@ class Excel:
                     # print('Добавил', ws_name['full'])
                     ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
                 self._fill_row(ws, d, date)
-            self._update_dashboard(wb)
+            self._reset_funnels(wb, self.odbo_funnel_sheet_name)
+            self._reset_funnels(wb, self.contract_funnel_sheet_name)
+            self._reset_funnels(wb, self.graph_funnel_sheet_name)
+            self._update_dashboard(wb, False)
         except FileNotFoundError:
             self.init_wb()
 
@@ -111,11 +136,8 @@ class Excel:
         last = len(ws['A'])
         return [ws.cell(last, 2).value, ws.cell(last, 3).value, ws.cell(last, 1).value]
     
-    def _update_dashboard(self, wb):
+    def _update_dashboard(self, wb, noFunnels):
         ws = wb[self.dashboard_ws_name]
-        self._reset_funnels(wb, self.odbo_funnel_sheet_name)
-        self._reset_funnels(wb, self.contract_funnel_sheet_name)
-        self._reset_funnels(wb, self.graph_funnel_sheet_name)
         for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=4):
             for cell in row:
                 if cell.row == 1:
@@ -128,24 +150,25 @@ class Excel:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[0]
                     name = cell.offset(row=0, column=-1).value
-                    if name.startswith('Открытие брокерского счета'):
-                        self._update_funnels(wb, name, val[0], val[2], self.odbo_funnel_sheet_name)
-                    if cell.offset(row=0, column=-1).value in self.contract_funnel_elements:
-                        self._update_funnels(wb, name, val[0], val[2], self.contract_funnel_sheet_name)
-                    if cell.offset(row=0, column=-1).value in self.graph_funnel_elements:
-                        self._update_funnels(wb, name, val[0], val[2], self.graph_funnel_sheet_name)
+                    if not noFunnels:
+                        if name.startswith('Открытие брокерского счета'):
+                            self._update_funnels(wb, name, val[0], val[2], self.odbo_funnel_sheet_name)
+                        if cell.offset(row=0, column=-1).value in self.contract_funnel_elements:
+                            self._update_funnels(wb, name, val[0], val[2], self.contract_funnel_sheet_name)
+                        if cell.offset(row=0, column=-1).value in self.graph_funnel_elements:
+                            self._update_funnels(wb, name, val[0], val[2], self.graph_funnel_sheet_name)
                 elif cell.column == 3: 
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
                     cell.value = val[1]
                 elif cell.column == 4:
                     val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-3).value.encode('UTF-8')).hexdigest()[:-1])])
-                    three_months_ago = datetime.now() - timedelta(days=90)
-                    six_months_ago = datetime.now() - timedelta(days=180)
+                    two_weeks_ago = datetime.now() - timedelta(days=15)
+                    month_ago = datetime.now() - timedelta(days=30)
                     cell.number_format = 'DD.MM.YYYY'
                     cell.value = datetime.strptime(val[2], '%Y-%m-%d')
-                    if cell.value < six_months_ago:
+                    if cell.value < month_ago:
                         cell.fill = PatternFill("solid", fgColor=str('ff0000'))
-                    elif cell.value < three_months_ago:
+                    elif cell.value < two_weeks_ago:
                         cell.fill = PatternFill("solid", fgColor=str('ff8400'))
                     else:
                         cell.fill = PatternFill(fill_type=None, start_color='FFFFFFFF', end_color='FF000000')
