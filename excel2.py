@@ -71,15 +71,20 @@ class Excel2:
         f = open("tree.json", "w")
         f.write(json.dumps(tree))
         f.close()
-        for branch in tree:
-            for source in tree[branch]:
-                for row in tree[branch][source]:
-                    # print('!!!', tree[branch][source])
-                    ws_odbo.append(row)
+        return tree
+        # for branch in tree:
+        #     for source in tree[branch]:
+        #         for row in tree[branch][source]:
+        #             # print('!!!', tree[branch][source])
+        #             ws_odbo.append(row)
+
+    def _update_funnel(self, wb, data):
+
 
     def init_wb(self):
         wb = Workbook()
         self._build_dashboard(wb)
-        self._build_odbo_funnel(wb)
+        odbo_funnel = self._build_odbo_funnel(wb)
+        self._update_funnel(wb, odbo_funnel)
         wb.save(self.path_to_wb)
         print('excel ready')
