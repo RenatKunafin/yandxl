@@ -123,3 +123,10 @@ stub/
 *.ini
 *.sh
 .DS_Store
+
+response.json
+result.json
+new_data.json
+old_data.json
+tree_decoded.json
+*.ipynb

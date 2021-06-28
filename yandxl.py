@@ -2,6 +2,7 @@ import os
 import getopt
 import sys
 import json
+import argparse
 from yametrics import Yametrics
 # from excel import Excel
 from excel2 import Excel2
@@ -21,20 +22,29 @@ def send(cfg):
 
 
 def main(argv):
-    try:
-        opts, args = getopt.getopt(argv, "hia", ["init", "add"])
-    except getopt.GetoptError as e:
-        print(e)
-        print('yandxl.py -i <init> -a <add>')
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Yandex metrics to Excel')
+    parser.add_argument("--init", action='store_true', help="Init new report file")
+    parser.add_argument("--add", action='store_true', help="Add data to existing report file")
+    parser.add_argument("--date1", help="Start date")
+    parser.add_argument("--date2", help="End date")
+    args = parser.parse_args()
+    print('!>', args)
 
-    if len(opts) == 0 and len(args) == 0:
-        print('yandxl.py -i <init> -a <add>')
-        sys.exit(1)
-    for opt, arg in opts:
-        if opt == '-h':
-            print('yandxl.py -i <init> -a <add>')
-            sys.exit()
+
+    # try:
+    #     opts, args = getopt.getopt(argv, "hia", ["init", "add"])
+    # except getopt.GetoptError as e:
+    #     print(e)
+    #     print('yandxl.py -i <init> -a <add>')
+    #     sys.exit(1)
+
+    # if len(opts) == 0 and len(args) == 0:
+    #     print('yandxl.py -i <init> -a <add>')
+    #     sys.exit(1)
+    # for opt, arg in opts:
+    #     if opt == '-h':
+    #         print('yandxl.py -i <init> -a <add>')
+    #         sys.exit()
 
     base_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(base_path, "params.ini")
@@ -46,23 +56,35 @@ def main(argv):
         print("Add params.ini")
         sys.exit(1)
 
-    ym = Yametrics(cfg)
+    ym = Yametrics(cfg, args.date1, args.date2)
     data = ym.request_metrics()
-    excel = Excel2(cfg, data)
+    excel = Excel2(cfg, data, args.date1)
 
-    for opt, arg in opts:
+    if args.init is True:
+        excel.init_wb()
+        # send(cfg)
+        sys.exit()
+    elif args.add is True:
+        excel.write_to_wb()
+        # send(cfg)
+        sys.exit()
+    else:
+        print('yandxl.py -init or -add')
+        exit()
 
-        if opt in ('-i', '--init'):
-            excel.init_wb()
-            # send(cfg)
-            sys.exit()
-        # elif opt in ('-a', '--add'):
-        #     excel.write_to_wb()
-        #     # send(cfg)
-        #     sys.exit()
-        else:
-            print('yandxl.py -i <init> -a <add>')
-            exit()
+    # for opt, arg in opts:
+
+    #     if opt in ('-i', '--init'):
+    #         excel.init_wb()
+    #         # send(cfg)
+    #         sys.exit()
+    #     elif opt in ('-a', '--add'):
+    #         excel.write_to_wb()
+    #         # send(cfg)
+    #         sys.exit()
+    #     else:
+    #         print('yandxl.py -i <init> -a <add>')
+    #         exit()
 
 
 if __name__ == "__main__":

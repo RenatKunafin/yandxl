@@ -7,14 +7,14 @@ logging.basicConfig(level=logging.DEBUG)
 
 
 class Yametrics:
-    def __init__(self, cfg):
+    def __init__(self, cfg, startDate, endDate):
         self.cfg = cfg
         self.url = cfg.get('yam', 'API_ROOT_URL')
         self.token = cfg.get('yam', 'YANDEX_TOKEN')
         self.headers = {'Authorization': 'OAuth  ' + self.token}
         self.counter_id = cfg.get('yam', 'COUNTER')
-        self.date1 = cfg.get('yam', 'DATE1')
-        self.date2 = cfg.get('yam', 'DATE2')
+        self.date1 = startDate or cfg.get('yam', 'DATE1')
+        self.date2 = endDate or cfg.get('yam', 'DATE2')
         self.filters = cfg.get('yam', 'FILTERS')
         self.accuracy = cfg.get('yam', 'ACCURACY')
 
@@ -22,6 +22,7 @@ class Yametrics:
         self.metrics = cfg.get('yam', 'METRICS2').split(',')
 
     def request_metrics(self):
+        print('DATES', self.date1, self.date2)
         params = {
             "ids": self.counter_id,
             "accuracy": self.accuracy,
