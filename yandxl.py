@@ -4,7 +4,6 @@ import sys
 import json
 import argparse
 from yametrics import Yametrics
-# from excel import Excel
 from excel2 import Excel2
 from configparser import ConfigParser
 from sendmail import send_mail
@@ -30,22 +29,6 @@ def main(argv):
     args = parser.parse_args()
     print('!>', args)
 
-
-    # try:
-    #     opts, args = getopt.getopt(argv, "hia", ["init", "add"])
-    # except getopt.GetoptError as e:
-    #     print(e)
-    #     print('yandxl.py -i <init> -a <add>')
-    #     sys.exit(1)
-
-    # if len(opts) == 0 and len(args) == 0:
-    #     print('yandxl.py -i <init> -a <add>')
-    #     sys.exit(1)
-    # for opt, arg in opts:
-    #     if opt == '-h':
-    #         print('yandxl.py -i <init> -a <add>')
-    #         sys.exit()
-
     base_path = os.path.dirname(os.path.abspath(__file__))
     config_path = os.path.join(base_path, "params.ini")
 
@@ -62,30 +45,15 @@ def main(argv):
 
     if args.init is True:
         excel.init_wb()
-        # send(cfg)
+        send(cfg)
         sys.exit()
     elif args.add is True:
         excel.write_to_wb()
-        # send(cfg)
+        send(cfg)
         sys.exit()
     else:
         print('yandxl.py -init or -add')
         exit()
-
-    # for opt, arg in opts:
-
-    #     if opt in ('-i', '--init'):
-    #         excel.init_wb()
-    #         # send(cfg)
-    #         sys.exit()
-    #     elif opt in ('-a', '--add'):
-    #         excel.write_to_wb()
-    #         # send(cfg)
-    #         sys.exit()
-    #     else:
-    #         print('yandxl.py -i <init> -a <add>')
-    #         exit()
-
 
 if __name__ == "__main__":
     main(sys.argv[1:])
