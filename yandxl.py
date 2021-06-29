@@ -4,7 +4,7 @@ import sys
 import json
 import argparse
 from yametrics import Yametrics
-from excel2 import Excel2
+from excel import Excel
 from configparser import ConfigParser
 from sendmail import send_mail
 
@@ -41,7 +41,7 @@ def main(argv):
 
     ym = Yametrics(cfg, args.date1, args.date2)
     data = ym.request_metrics()
-    excel = Excel2(cfg, data, args.date1)
+    excel = Excel(cfg, data, args.date1)
 
     if args.init is True:
         excel.init_wb()

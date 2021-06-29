@@ -4,203 +4,174 @@ from openpyxl.styles import Font, Fill, PatternFill
 from datetime import datetime
 from datetime import timedelta
 from hashlib import md5
+import time
+import json
+import re
+
+from openpyxl.workbook.defined_name import ROW_RANGE_RE
 
 
 class Excel:
-    def __init__(self, cfg, data):
+    def __init__(self, cfg, data, startDate):
         self.data = data
-        self.query = data['query']
+        # self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME') + '_' + str(time.time()) + '.xlsx'
         self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
+        self.odbo_ws_name = cfg.get('excel', 'ODBO_FUNNEL_SHEET_NAME')
+        self.odbo_titles = cfg.get('excel', 'ODBO_FUNNEL_TITLES').split(',')
+        self.odbo_steps = cfg.get('excel', 'ODBO_FUNNEL_STEPS').split(',')
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
-        self.titles = cfg.get('excel', 'ROW_TITLES').split(',')
-        self.max_ws_name_length = int(cfg.get('excel', 'MAX_WS_NAME_LENGTH'))
-        self.titles_color = int(cfg.get('excel', 'TITLES_FILL_COLOR'))
-        self.odbo_funnel_sheet_name = cfg.get('excel', 'ODBO_FUNNEL_SHEET_NAME')
-        self.odbo_funnel_elements = cfg.get('excel', 'ODBO_FUNNEL_ELEMENTS').split(',')
-        self.contract_funnel_sheet_name = cfg.get('excel', 'CONTRACTS_TO_ACTIVE_FUNNEL_SHEET_NAME')
-        self.contract_funnel_elements = cfg.get('excel', 'CONTRACTS_TO_ACTIVE_FUNNEL_ELEMENTS').split(',')
-        self.graph_funnel_sheet_name = cfg.get('excel', 'GRAPH_FUNNEL_SHEET_NAME')
-        self.graph_funnel_elements = cfg.get('excel', 'GRAPH_FUNNEL_ELEMENTS').split(',')
+        self.date1 = startDate or cfg.get('yam', 'DATE1')
+        self.title_font = Font(size=14, color='FF000000')
 
-    @staticmethod
-    def _fill_row(ws, data, date):
-        values = list()
-        values.append(date)
-        values.extend(data['metrics'])
-        ws.append(values)
+    def _build_dashboard_row(self, dimensions, metrics):
+        entry = []
+        for d in dimensions:
+            entry.append(d['name'])
+        return entry + metrics
 
-    def _create_ws_name1(self, dimensions):
-        name = ''
-        for i, d in enumerate(dimensions):
-            if i >= 2 and d['name'] is not None and d['name'] != 'null':
-                name = name + d['name'] + '.'
-        a = {
-            'full': name[:-1],
-            'short': str(md5(name[:-1].encode('UTF-8')).hexdigest()[:-1])
-        }
-        return a
-
-    def _create_ws_name(self, dimensions):
-        name = ''
-        # print('DDD', dimensions)
-        for i, d in enumerate(dimensions):
-            if d['name'] is not None and d['name'] != 'null':
-                if i == 0 and d['name'] != 'SBOL_WEB':
-                    uko = d['name']
-                    # print('UKO', uko)
-                    name = name + f'[{uko}]'
-                elif i == 1 and dimensions[0]['name'] != 'SBOL_WEB':
-                    app = d['name']
-                    # print('APP', app, dimensions[i-1]['name'])
-                    name = name + f'[{app}]'
-                elif i >= 2:
-                    name = name + d['name'] + '.'
-        a = {
-            'full': name[:-1],
-            'short': str(md5(name[:-1].encode('UTF-8')).hexdigest()[:-1])
-        }
-        print('NAME', a)
-        return a
-
-    def _get_row_date(self):
-        date = ''
-        print('REQUESTED DATES', self.query['date1'], self.query['date2'])
-        date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d')
-        date2 = datetime.strptime(self.query['date2'], '%Y-%m-%d')
-        delta = date2 - date1
-        if delta.days <= 1:
-            date = self.query['date1']
-        else:
-            try:
-                date1 = datetime.strptime(self.query['date1'], '%Y-%m-%d').strftime("%Y-%m-%d")
-                date2 = datetime.strptime(self.query['date2'], '%Y-%m-%d').strftime("%Y-%m-%d")
-                date = str(date1) + ' - ' + str(date2)
-            except ValueError as e:
-                print(e)
-        return str(date)
-    
-    def _create_ws_header(self, ws, ws_name):
-        ws['A1'].value = 'Дашборд'
-        ws['A1'].font = Font(size=14)
-        ws['A1'].hyperlink = f'#{self.dashboard_ws_name}!A1'
-        ws['A1'].style = "Hyperlink"
-        ws['B1'].value = ws_name['full']
-        ws['B1'].font = Font(bold=True, size=14)
-        ws.freeze_panes = ws['A3']
-        for idx, title in enumerate(self.titles, start=1):
-            c = ws.cell(column=idx, row=2, value=title)
-            c.fill = PatternFill("solid", fgColor=str(self.titles_color))
-
-    def init_wb(self):
-        wb = Workbook()
-        ws_dashboard = wb.active
-        ws_dashboard.title = self.dashboard_ws_name
-        ws_dashboard.append(self.titles_dashboard)
-        date = self._get_row_date()
+    def _build_dashboard(self, wb):
+        if not self.dashboard_ws_name in wb:
+            ws_dashboard = wb.active
+            ws_dashboard.title = self.dashboard_ws_name
+            ws_dashboard.append(self.titles_dashboard)
+            ws_dashboard.auto_filter.ref = ws_dashboard.dimensions
+            for row in ws_dashboard.iter_rows(min_row=1, max_row=1, min_col=1, max_col=ws_dashboard.max_column):
+                for cell in row:
+                    cell.font = self.title_font
+            ws_dashboard.column_dimensions['A'].width = 15
+            ws_dashboard.column_dimensions['B'].width = 20
+            ws_dashboard.column_dimensions['C'].width = 30
+            ws_dashboard.column_dimensions['D'].width = 30
+            ws_dashboard.column_dimensions['E'].width = 40
+            ws_dashboard.column_dimensions['F'].width = 40
+            ws_dashboard.column_dimensions['G'].width = 25
+            ws_dashboard.column_dimensions['H'].width = 20
+            ws_dashboard.column_dimensions['I'].width = 20
+        ws_dashboard = wb[self.dashboard_ws_name]
+        ws_dashboard.delete_rows(2, ws_dashboard.max_row)
+        entries = []
         for d in self.data['data']:
-            ws_name = self._create_ws_name(d['dimensions'])
-            ws = wb.create_sheet(ws_name['short'])
-            self._create_ws_header(ws, ws_name)
-            self._fill_row(ws, d, date)
-            ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-        self._update_dashboard(wb, True)
+            entries.append(self._build_dashboard_row(d['dimensions'], d['metrics']))
+        for row in entries:
+            ws_dashboard.append(row)
+
+    def _dataToList(self, dimensions, metrics):
+        return [dimensions[4]['name'], dimensions[0]['name'], dimensions[3]['name'], metrics[0]]
+
+    def _sort(self, items):
+        res = list()
+        for pos in self.odbo_steps:
+            for item in items:
+                if pos == item[0]:
+                    res.append(item)
+        return res
+
+    def _build_odbo_funnel(self):
+        tree = {}
+        for d in self.data['data']:
+            if (d['dimensions'][2]['name'] == 'Открытие брокерского счета'):
+                step = d['dimensions'][4]['name']
+                channel = d['dimensions'][0]['name']
+                source = d['dimensions'][3]['name']
+                action = d['dimensions'][5]['name']
+                value = d['metrics'][0]
+                key = step+'-'+channel+'-'+source
+                if action == 'Открытие' or (step == 'Экран запрета' and d['dimensions'][6]['name'] == 'Открытие'):
+                    tree[key] = [step, channel, source, value]
+                elif action == 'Один телефон' or action == 'Несколько телефонов':
+                    try:
+                        tree[key][3] = tree[key][3] + value
+                    except KeyError:
+                        tree[key] = [step, channel, source, value]
+        self._save_to('new_data.json', tree)
+        temp = list(tree.values())
+        res = list()
+        for pos in self.odbo_steps:
+            for item in temp:
+                if pos == item[0]:
+                    res.append(item)
+        return res
+
+    def _get_date(self):
+        p = re.compile('(\d+)[A-z]+')
+        res = p.findall(self.date1)
+        if len(res) != 0:
+            d = datetime.today() - timedelta(days=int(res[0]))
+            return d.strftime('%d-%m-%Y')
+        elif self.date1 is not None:
+            return datetime.strptime(self.date1, '%Y-%m-%d').strftime('%d-%m-%Y')
+        else:
+            raise ValueError('Unknown date1 value', self.date1)
+
+    def _save_to(self, file_name, data):
+        f = open(file_name, "w")
+        f.write(json.dumps(data))
+        f.close()
 
     def write_to_wb(self):
-        # Подгрузить файл, если его нет, то создать
-        # Проверить есть ли воркшит с историческими данными для данной метрики
-        # Если его нет, то создать и добавить в него строку с данными
-        # Затем завести для него строку на титульном воркшите
+        print('WRITE')
         try:
             wb = load_workbook(self.path_to_wb)
-            ws_dashboard = wb[self.dashboard_ws_name]
-            date = self._get_row_date()
-            for d in self.data['data']:
-                ws_name = self._create_ws_name(d['dimensions'])
-                try:
-                    ws = wb[ws_name['short']]
-                except KeyError:
-                    ws = wb.create_sheet(ws_name['short'])
-                    self._create_ws_header(ws, ws_name)
-                    # print('Добавил', ws_name['full'])
-                    ws_dashboard.append([ws_name['full'], d['metrics'][0], d['metrics'][1]])
-                self._fill_row(ws, d, date)
-            self._reset_funnels(wb, self.odbo_funnel_sheet_name)
-            self._reset_funnels(wb, self.contract_funnel_sheet_name)
-            self._reset_funnels(wb, self.graph_funnel_sheet_name)
-            self._update_dashboard(wb, False)
-        except FileNotFoundError:
-            self.init_wb()
+            self._build_dashboard(wb)
+            ws = wb[self.odbo_ws_name]
+            date = self._get_date()
+            column = ws.max_column
+            if column == 18:
+                ws.delete_cols(4)
+            tree = self._build_odbo_funnel()
+            old_data = {}
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column, values_only=True):
+                old_data[row[0]+'-'+row[1]+'-'+row[2]] = list(row)
+            self._save_to('old_data.json', old_data)
 
-    def _get_last_row(self, ws):
-        last = len(ws['A'])
-        return [ws.cell(last, 2).value, ws.cell(last, 3).value, ws.cell(last, 1).value]
-    
-    def _update_dashboard(self, wb, noFunnels):
-        ws = wb[self.dashboard_ws_name]
-        for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=4):
-            for cell in row:
-                if cell.row == 1:
-                    continue
-                elif cell.column == 1:
-                    link = str(md5(cell.value.encode('UTF-8')).hexdigest()[:-1])
-                    cell.hyperlink = f'#{link}!A1'
-                    cell.style = "Hyperlink"
-                elif cell.column == 2:
-                    val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-1).value.encode('UTF-8')).hexdigest()[:-1])])
-                    cell.value = val[0]
-                    name = cell.offset(row=0, column=-1).value
-                    if not noFunnels:
-                        if name.startswith('Открытие брокерского счета'):
-                            self._update_funnels(wb, name, val[0], val[2], self.odbo_funnel_sheet_name)
-                        if cell.offset(row=0, column=-1).value in self.contract_funnel_elements:
-                            self._update_funnels(wb, name, val[0], val[2], self.contract_funnel_sheet_name)
-                        if cell.offset(row=0, column=-1).value in self.graph_funnel_elements:
-                            self._update_funnels(wb, name, val[0], val[2], self.graph_funnel_sheet_name)
-                elif cell.column == 3: 
-                    val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-2).value.encode('UTF-8')).hexdigest()[:-1])])
-                    cell.value = val[1]
-                elif cell.column == 4:
-                    val = self._get_last_row(wb[str(md5(cell.offset(row=0, column=-3).value.encode('UTF-8')).hexdigest()[:-1])])
-                    two_weeks_ago = datetime.now() - timedelta(days=15)
-                    month_ago = datetime.now() - timedelta(days=30)
-                    cell.number_format = 'DD.MM.YYYY'
-                    cell.value = datetime.strptime(val[2], '%Y-%m-%d')
-                    if cell.value < month_ago:
-                        cell.fill = PatternFill("solid", fgColor=str('ff0000'))
-                    elif cell.value < two_weeks_ago:
-                        cell.fill = PatternFill("solid", fgColor=str('ff8400'))
-                    else:
-                        cell.fill = PatternFill(fill_type=None, start_color='FFFFFFFF', end_color='FF000000')
+            for item in tree:
+                key_from_new = item[0]+'-'+item[1]+'-'+item[2]
+                value = item[3]
+                if key_from_new in old_data:
+                    old_data[key_from_new].append(value)
+                else:
+                    res = [0] * (ws.max_column - 3)
+                    res.append(value)
+                    temp = item[0:3] + res
+                    old_data[key_from_new] = temp
+            result = self._sort(list(old_data.values()))
+            self._save_to('result.json', result)
+            ws.delete_rows(2, ws.max_row)
+            for row in result:
+                ws.append(row)
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=ws.max_column, max_col=ws.max_column):
+                for cell in row:
+                    if cell.value is None:
+                        cell.value = 0
+            ws.cell(row = 1, column=ws.max_column).value = date
+            ws.cell(row = 1, column=ws.max_column).font = self.title_font
+            ws.column_dimensions[ws.cell(row = 1, column=ws.max_column).column_letter].width = 15
+            wb.save(self.path_to_wb)
+            print('excel ready')
+            
+        except FileNotFoundError:
+            print('Excel file not found')
+
+    def init_wb(self):
+        print('INIT')
+        wb = Workbook()
+        self._build_dashboard(wb)
+        ws_odbo = wb.create_sheet(self.odbo_ws_name)
+        ws_odbo.title = self.odbo_ws_name
+        ws_odbo.append(self.odbo_titles)
+        for row in ws_odbo.iter_rows(min_row=1, max_row=1, min_col=1, max_col=ws_odbo.max_column):
+                for cell in row:
+                    cell.font = self.title_font
+        ws_odbo.column_dimensions['A'].width = 20
+        ws_odbo.column_dimensions['B'].width = 15
+        ws_odbo.column_dimensions['C'].width = 30
+        ws_odbo.column_dimensions['D'].width = 15
+        ws_odbo.auto_filter.ref = ws_odbo.dimensions
+        tree = self._build_odbo_funnel()
+        for row in tree:
+            ws_odbo.append(row)
+        ws_odbo.cell(row = 1, column=ws_odbo.max_column).value = self._get_date()
+        ws_odbo.cell(row = 1, column=ws_odbo.max_column).font = self.title_font
         wb.save(self.path_to_wb)
         print('excel ready')
-
-    def _reset_funnels(self, wb, sheetname):
-        ws = wb[sheetname]
-        for row in ws.iter_rows(min_row=ws.min_row+1, max_row=ws.max_row, min_col=3, max_col=3):
-            for cell in row:
-                if type(cell.value) is str and cell.value.startswith('='):
-                    continue
-                elif cell.value is None:
-                    continue
-                else:
-                    cell.value = 0
-    
-    def _update_funnels(self, wb, name, value, date, sheetname):
-        ws = wb[sheetname]
-        date2 = datetime.now() - timedelta(days=1)
-        # print('!>', ws.title, ws.max_row)
-        for row in ws.iter_rows(min_row=ws.min_row, max_row=ws.max_row, min_col=1, max_col=3):
-            for cell in row:
-                # if sheetname == self.odbo_funnel_sheet_name:
-                #     f = open("log.txt", "a")
-                #     f.write('!>>' + ',' + str(name) + ',' + str(cell.value) + '\n')
-                #     f.close()
-                if cell.value != name:
-                    continue
-                elif datetime.strptime(date, '%Y-%m-%d') < date2.replace(hour=0, minute=0, second=0, microsecond=0):
-                    # print('Занулил', cell.value, cell.offset(row=0, column=+2).value, value, date, date2)
-                    cell.offset(row=0, column=+1).value = 0
-                else:
-                    # print('Обновил', cell.value, cell.offset(row=0, column=+2).value, value, date)
-                    cell.offset(row=0, column=+1).value = value
