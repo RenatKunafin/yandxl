@@ -14,10 +14,10 @@ from openpyxl.workbook.defined_name import ROW_RANGE_RE
 class Excel:
     def __init__(self, cfg, data, startDate):
         self.data = data
-        # self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME') + '_' + str(time.time()) + '.xlsx'
         self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
         self.odbo_ws_name = cfg.get('excel', 'ODBO_FUNNEL_SHEET_NAME')
+        self.odbo_iis_ws_name = cfg.get('excel', 'ODBO_IIS_FUNNEL_SHEET_NAME')
         self.odbo_titles = cfg.get('excel', 'ODBO_FUNNEL_TITLES').split(',')
         self.odbo_steps = cfg.get('excel', 'ODBO_FUNNEL_STEPS').split(',')
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
@@ -67,10 +67,10 @@ class Excel:
                     res.append(item)
         return res
 
-    def _build_odbo_funnel(self):
+    def _build_odbo_funnel(self, name):
         tree = {}
         for d in self.data['data']:
-            if (d['dimensions'][2]['name'] == 'Открытие брокерского счета'):
+            if (d['dimensions'][2]['name'] == name):
                 step = d['dimensions'][4]['name']
                 channel = d['dimensions'][0]['name']
                 source = d['dimensions'][3]['name']
@@ -79,7 +79,7 @@ class Excel:
                 key = step+'-'+channel+'-'+source
                 if action == 'Открытие' or (step == 'Экран запрета' and d['dimensions'][6]['name'] == 'Открытие'):
                     tree[key] = [step, channel, source, value]
-                elif action == 'Один телефон' or action == 'Несколько телефонов':
+                elif (action == 'Один телефон' or action == 'Несколько телефонов') and d['dimensions'][6]['name'] == 'Открытие':
                     try:
                         tree[key][3] = tree[key][3] + value
                     except KeyError:
@@ -109,56 +109,104 @@ class Excel:
         f.write(json.dumps(data))
         f.close()
 
-    def write_to_wb(self):
+    def _colect_old_data(self, ws):
+        old_data = {}
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column, values_only=True):
+            old_data[row[0]+'-'+row[1]+'-'+row[2]] = list(row)
+        self._save_to('old_data.json', old_data)
+        return old_data
+
+    def _merge_data(self, ws, old_data, new_data):
+        for item in new_data:
+            key_from_new = item[0]+'-'+item[1]+'-'+item[2]
+            value = item[3]
+            if key_from_new in old_data:
+                old_data[key_from_new].append(value)
+            else:
+                max_column = 4 if ws.max_column < 4 else ws.max_column
+                res = [0] * (max_column - 3)
+                res.append(value)
+                temp = item[0:3] + res
+                old_data[key_from_new] = temp
+        result = self._sort(list(old_data.values()))
+        self._save_to('result.json', result)
+        return result
+
+    def _update_ws(self, ws, data, date):
+        ws.delete_rows(2, ws.max_row)
+        # print('MAX', ws.max_column)
+        max_column = 4 if ws.max_column < 4 else ws.max_column
+        ws.cell(row = 1, column=max_column+1).value = date
+        ws.cell(row = 1, column=max_column+1).font = self.title_font
+        for row in data:
+            ws.append(row)
+        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=ws.max_column, max_col=ws.max_column):
+            for cell in row:
+                if cell.value is None:
+                    cell.value = 0
+        ws.column_dimensions[ws.cell(row = 1, column=ws.max_column).column_letter].width = 15
+
+    def _log_file(self, wb, config, date):
+        f = open('log_counter.txt', "r")
+        counter = int(f.read() or 1)
+        f.close()
+        f = open('log_counter.txt', "w")
+        counter = counter + 1
+        
+        print('COUNTER', counter)
+        if counter >= 15:
+            f.write('0')
+            file_name = config.get('excel', 'WB_NAME')
+            log_file_name = config.get('smtp', 'PATH') + file_name[0:-5] + '_' + date + '.xlsx'
+            wb.save(log_file_name)
+            print('REPORT LOGGED')
+        else:
+            f.write(str(counter))
+        f.close()
+
+    def _write_to_odbo_funnel(self, wb, date):
+        ws = wb[self.odbo_ws_name]
+        column = ws.max_column
+        if column == 18:
+            ws.delete_cols(4)
+        new_data = self._build_odbo_funnel('Открытие брокерского счета')
+        old_data = self._colect_old_data(ws)
+        result = self._merge_data(ws, old_data, new_data)
+        self._update_ws(ws, result, date)
+
+    def _write_to_odbo_iis_funnel(self, wb, date):
+        ws = wb[self.odbo_iis_ws_name]
+        column = ws.max_column
+        if column == 18:
+            ws.delete_cols(4)
+        new_data = self._build_odbo_funnel('Открытие брокерского счета и ИИС')
+        old_data = self._colect_old_data(ws)
+        result = self._merge_data(ws, old_data, new_data)
+        self._update_ws(ws, result, date)
+
+    def write_to_wb(self, config, mode=None):
         print('WRITE')
         try:
             wb = load_workbook(self.path_to_wb)
-            self._build_dashboard(wb)
-            ws = wb[self.odbo_ws_name]
             date = self._get_date()
-            column = ws.max_column
-            if column == 18:
-                ws.delete_cols(4)
-            tree = self._build_odbo_funnel()
-            old_data = {}
-            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column, values_only=True):
-                old_data[row[0]+'-'+row[1]+'-'+row[2]] = list(row)
-            self._save_to('old_data.json', old_data)
-
-            for item in tree:
-                key_from_new = item[0]+'-'+item[1]+'-'+item[2]
-                value = item[3]
-                if key_from_new in old_data:
-                    old_data[key_from_new].append(value)
-                else:
-                    res = [0] * (ws.max_column - 3)
-                    res.append(value)
-                    temp = item[0:3] + res
-                    old_data[key_from_new] = temp
-            result = self._sort(list(old_data.values()))
-            self._save_to('result.json', result)
-            ws.delete_rows(2, ws.max_row)
-            for row in result:
-                ws.append(row)
-            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=ws.max_column, max_col=ws.max_column):
-                for cell in row:
-                    if cell.value is None:
-                        cell.value = 0
-            ws.cell(row = 1, column=ws.max_column).value = date
-            ws.cell(row = 1, column=ws.max_column).font = self.title_font
-            ws.column_dimensions[ws.cell(row = 1, column=ws.max_column).column_letter].width = 15
+            ws = wb[self.odbo_ws_name]
+            self._log_file(wb, config, date)
+            if ws.max_column == 18:
+                wb = load_workbook(self.path_to_wb)
+            self._build_dashboard(wb)
+            self._write_to_odbo_funnel(wb, date)
+            self._write_to_odbo_iis_funnel(wb, date)
             wb.save(self.path_to_wb)
             print('excel ready')
             
         except FileNotFoundError:
             print('Excel file not found')
+            if mode == 'generation':
+                self.init_wb()
 
-    def init_wb(self):
-        print('INIT')
-        wb = Workbook()
-        self._build_dashboard(wb)
-        ws_odbo = wb.create_sheet(self.odbo_ws_name)
-        ws_odbo.title = self.odbo_ws_name
+    def _create_odbo_ws(self, wb, ws_name, process_name):
+        ws_odbo = wb.create_sheet(ws_name)
+        ws_odbo.title = ws_name
         ws_odbo.append(self.odbo_titles)
         for row in ws_odbo.iter_rows(min_row=1, max_row=1, min_col=1, max_col=ws_odbo.max_column):
                 for cell in row:
@@ -168,10 +216,18 @@ class Excel:
         ws_odbo.column_dimensions['C'].width = 30
         ws_odbo.column_dimensions['D'].width = 15
         ws_odbo.auto_filter.ref = ws_odbo.dimensions
-        tree = self._build_odbo_funnel()
+        tree = self._build_odbo_funnel(process_name)
         for row in tree:
             ws_odbo.append(row)
-        ws_odbo.cell(row = 1, column=ws_odbo.max_column).value = self._get_date()
-        ws_odbo.cell(row = 1, column=ws_odbo.max_column).font = self.title_font
+        max_column = 4 if ws_odbo.max_column < 4 else ws_odbo.max_column
+        ws_odbo.cell(row = 1, column=max_column).value = self._get_date()
+        ws_odbo.cell(row = 1, column=max_column).font = self.title_font
+
+    def init_wb(self):
+        print('INIT')
+        wb = Workbook()
+        self._build_dashboard(wb)
+        self._create_odbo_ws(wb, self.odbo_ws_name, 'Открытие брокерского счета')
+        self._create_odbo_ws(wb, self.odbo_iis_ws_name, 'Открытие брокерского счета и ИИС')
         wb.save(self.path_to_wb)
         print('excel ready')

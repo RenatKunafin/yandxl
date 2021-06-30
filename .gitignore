@@ -130,3 +130,5 @@ new_data.json
 old_data.json
 tree_decoded.json
 *.ipynb
+log_counter.txt
+*.zip

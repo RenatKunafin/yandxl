@@ -1,5 +1,4 @@
 import os
-import getopt
 import sys
 import json
 import argparse
@@ -48,7 +47,7 @@ def main(argv):
         send(cfg)
         sys.exit()
     elif args.add is True:
-        excel.write_to_wb()
+        excel.write_to_wb(config=cfg)
         send(cfg)
         sys.exit()
     else:
