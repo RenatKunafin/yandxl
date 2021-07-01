@@ -2,6 +2,7 @@ import requests
 import pprint
 import logging
 import json
+from datetime import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 
@@ -22,7 +23,8 @@ class Yametrics:
         self.metrics = cfg.get('yam', 'METRICS').split(',')
 
     def request_metrics(self):
-        print('DATES', self.date1, self.date2)
+        print('DATE: ', datetime.today().strftime('%d-%m-%Y'))
+        print('REQUESTED: ', self.date1, self.date2)
         params = {
             "ids": self.counter_id,
             "accuracy": self.accuracy,
