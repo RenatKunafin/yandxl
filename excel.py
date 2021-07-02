@@ -15,7 +15,8 @@ from openpyxl.workbook.defined_name import ROW_RANGE_RE
 class Excel:
     def __init__(self, cfg, data, startDate):
         self.data = data
-        self.path_to_wb = cfg.get('smtp', 'PATH') + cfg.get('excel', 'WB_NAME')
+        self.path = cfg.get('smtp', 'PATH')
+        self.path_to_wb = self.path + cfg.get('excel', 'WB_NAME')
         self.dashboard_ws_name = cfg.get('excel', 'DASHBOARD_WS_NAME')
         self.odbo_ws_name = cfg.get('excel', 'ODBO_FUNNEL_SHEET_NAME')
         self.odbo_iis_ws_name = cfg.get('excel', 'ODBO_IIS_FUNNEL_SHEET_NAME')
@@ -152,10 +153,10 @@ class Excel:
         ws.column_dimensions[ws.cell(row = 1, column=ws.max_column).column_letter].width = 15
 
     def _log_file(self, wb, config, date):
-        f = open('log_counter.txt', "r")
+        f = open(self.path + 'log_counter.txt', "r")
         counter = int(f.read() or 1)
         f.close()
-        f = open('log_counter.txt', "w")
+        f = open(self.path + 'log_counter.txt', "w")
         counter = counter + 1
         
         print('COUNTER', counter)
