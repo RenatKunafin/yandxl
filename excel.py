@@ -7,6 +7,7 @@ from hashlib import md5
 import time
 import json
 import re
+import sys
 
 from openpyxl.workbook.defined_name import ROW_RANGE_RE
 
@@ -203,10 +204,12 @@ class Excel:
             wb.save(self.path_to_wb)
             print('excel ready')
             
-        except FileNotFoundError:
-            print('Excel file not found')
+        except FileNotFoundError as e:
+            print('Excel file not found', e)
             if mode == 'generation':
                 self.init_wb()
+            else:
+                sys.exit(1)
 
     def _create_odbo_ws(self, wb, ws_name, process_name):
         ws_odbo = wb.create_sheet(ws_name)
