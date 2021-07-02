@@ -90,7 +90,7 @@ class Excel:
                         tree[key][3] = tree[key][3] + value
                     except KeyError:
                         tree[key] = [step, channel, source, value]
-        self._save_to('new_data.json', tree)
+        # self._save_to('new_data.json', tree)
         temp = list(tree.values())
         res = list()
         for pos in self.odbo_steps:
@@ -110,16 +110,16 @@ class Excel:
         else:
             raise ValueError('Unknown date1 value', self.date1)
 
-    def _save_to(self, file_name, data):
-        f = open(file_name, "w")
-        f.write(json.dumps(data))
-        f.close()
+    # def _save_to(self, file_name, data):
+    #     f = open(file_name, "w")
+    #     f.write(json.dumps(data))
+    #     f.close()
 
     def _colect_old_data(self, ws):
         old_data = {}
         for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=ws.max_column, values_only=True):
             old_data[row[0]+'-'+row[1]+'-'+row[2]] = list(row)
-        self._save_to('old_data.json', old_data)
+        # self._save_to('old_data.json', old_data)
         return old_data
 
     def _merge_data(self, ws, old_data, new_data):
@@ -135,7 +135,7 @@ class Excel:
                 temp = item[0:3] + res
                 old_data[key_from_new] = temp
         result = self._sort(list(old_data.values()))
-        self._save_to('result.json', result)
+        # self._save_to('result.json', result)
         return result
 
     def _update_ws(self, ws, data, date):
@@ -191,7 +191,7 @@ class Excel:
         self._update_ws(ws, result, date)
 
     def write_to_wb(self, config, mode=None):
-        print('WRITE', self.path_to_wb)
+        print('WRITE')
         try:
             wb = load_workbook(self.path_to_wb)
             date = self._get_date()
