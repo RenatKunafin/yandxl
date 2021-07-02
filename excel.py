@@ -23,6 +23,8 @@ class Excel:
         self.titles_dashboard = cfg.get('excel', 'ROW_TITLES_DASHBOARD').split(',')
         self.date1 = startDate or cfg.get('yam', 'DATE1')
         self.title_font = Font(size=14, color='FF000000')
+        self.odbo_process_name = 'Открытие брокерского счета'
+        self.odbo_iis_process_name = 'Открытие брокерского счета и ИИС'
 
     def _build_dashboard_row(self, dimensions, metrics):
         entry = []
@@ -70,7 +72,9 @@ class Excel:
     def _build_odbo_funnel(self, name):
         tree = {}
         for d in self.data['data']:
-            if (d['dimensions'][2]['name'] == name):
+            # if (d['dimensions'][2]['name'] == name):
+            process = d['dimensions'][2]['name']
+            if process.endswith(name):
                 step = d['dimensions'][4]['name']
                 channel = d['dimensions'][0]['name']
                 source = d['dimensions'][3]['name']
@@ -169,7 +173,7 @@ class Excel:
         column = ws.max_column
         if column == 18:
             ws.delete_cols(4)
-        new_data = self._build_odbo_funnel('Открытие брокерского счета')
+        new_data = self._build_odbo_funnel(self.odbo_process_name)
         old_data = self._colect_old_data(ws)
         result = self._merge_data(ws, old_data, new_data)
         self._update_ws(ws, result, date)
@@ -179,13 +183,13 @@ class Excel:
         column = ws.max_column
         if column == 18:
             ws.delete_cols(4)
-        new_data = self._build_odbo_funnel('Открытие брокерского счета и ИИС')
+        new_data = self._build_odbo_funnel(self.odbo_iis_process_name)
         old_data = self._colect_old_data(ws)
         result = self._merge_data(ws, old_data, new_data)
         self._update_ws(ws, result, date)
 
     def write_to_wb(self, config, mode=None):
-        print('WRITE')
+        print('WRITE', self.path_to_wb)
         try:
             wb = load_workbook(self.path_to_wb)
             date = self._get_date()
@@ -227,7 +231,7 @@ class Excel:
         print('INIT')
         wb = Workbook()
         self._build_dashboard(wb)
-        self._create_odbo_ws(wb, self.odbo_ws_name, 'Открытие брокерского счета')
-        self._create_odbo_ws(wb, self.odbo_iis_ws_name, 'Открытие брокерского счета и ИИС')
+        self._create_odbo_ws(wb, self.odbo_ws_name, self.odbo_process_name)
+        self._create_odbo_ws(wb, self.odbo_iis_ws_name, self.odbo_iis_process_name)
         wb.save(self.path_to_wb)
         print('excel ready')
